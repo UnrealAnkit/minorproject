@@ -69,14 +69,22 @@ export const Watermarker = ({ type }: WatermarkerProps) => {
     formData.append("position", options.position);
 
     try {
-      const response = await fetch(`/api/process/${type === 'doc' ? 'pdf' : type}`, {
+      let endpoint = `/api/process/${type}`;
+      const response = await fetch(endpoint, {
         method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Processing failed");
+        let errData;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          errData = await response.json();
+        } else {
+          const text = await response.text();
+          throw new Error("Server error: " + response.status + ". " + text.slice(0, 50));
+        }
+        throw new Error(errData?.error || "Processing failed");
       }
 
       const blob = await response.blob();
